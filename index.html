@@ -51,11 +51,11 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
     return;
   }
 
-  const idPattern = /^UGR\/\d{6,8}\/\d{2}$/i;
-  if (!idPattern.test(id)) {
-    showMessage("ID format must be UGR/xxxxxx/xx.", "error");
-    return;
-  }
+const idPattern = /^UGR\/\d{6,8}\/\d{2}$/i;
+if (!idPattern.test(id)) {
+  showMessage("ID format must be UGR/xxxxxx/xx.", "error");
+  return;
+}
 
   if (pass.length < 4) {
     showMessage("Password must be at least 4 characters.", "error");
