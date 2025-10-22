@@ -30,63 +30,30 @@ button:hover { background:#1976D2; }
   <div id="message"></div>
 </div>
 
+// Replace the entire script section with this:
+
 <script>
 const messageDiv = document.getElementById("message");
-const API_URL = "https://script.google.com/macros/s/AKfycbwqQRjBdW5G5j8L_NIURaXM-xOyWiYbCLhJcA1aM4QSL1erQzy98UZxLZzKepVRRtbKXg/exec";
 
-// --- Helpers ---
 function showMessage(msg, type) {
   messageDiv.textContent = msg;
   messageDiv.className = type;
-  console.log(type + ": " + msg);
 }
 
-// Improved request function with better error handling
-async function sendRequest(payload) {
-  console.log("Sending request:", payload);
-  
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    });
-    
-    console.log("Response status:", response.status);
-    const text = await response.text();
-    console.log("Response text:", text);
-    
-    try {
-      return JSON.parse(text);
-    } catch (parseError) {
-      console.error("JSON parse error:", parseError);
-      return { success: false, error: "Invalid server response: " + text };
-    }
-  } catch (networkError) {
-    console.error("Network error:", networkError);
-    return { success: false, error: "Network error: " + networkError.message };
-  }
-}
-
-// --- Registration ---
-document.getElementById("registerBtn").addEventListener("click", async () => {
+// Registration using google.script.run
+document.getElementById("registerBtn").addEventListener("click", () => {
   const name = document.getElementById("studentName").value.trim();
   const id = document.getElementById("studentID").value.trim();
   const pass = document.getElementById("studentPass").value.trim();
-
-  console.log("Registration attempt:", { name, id, pass });
 
   if (!name || !id || !pass) {
     showMessage("All fields are required.", "error");
     return;
   }
 
-  // ID format validation
   const idPattern = /^UGR\/\d{5}\/\d{2}$/i;
   if (!idPattern.test(id)) {
-    showMessage("ID format must be UGR/xxxxx/xx (e.g., UGR/12345/67).", "error");
+    showMessage("ID format must be UGR/xxxxx/xx.", "error");
     return;
   }
 
@@ -97,37 +64,25 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
 
   showMessage("Registering...", "success");
 
-  try {
-    const data = await sendRequest({ 
-      action: 'registerStudent', 
-      name: name, 
-      id: id, 
-      password: pass 
-    });
-    
-    console.log("Registration response:", data);
-    
-    if (data.success) {
-      showMessage("Registered successfully! You can now login.", "success");
-      // Clear form
-      document.getElementById("studentName").value = "";
-      document.getElementById("studentID").value = "";
-      document.getElementById("studentPass").value = "";
-    } else {
-      showMessage(data.error || "Registration failed.", "error");
-    }
-  } catch (err) {
-    console.error("Registration error:", err);
-    showMessage("Registration error: " + err.message, "error");
-  }
+  google.script.run
+    .withSuccessHandler((result) => {
+      if (result.success) {
+        showMessage("Registered successfully! You can now login.", "success");
+        document.getElementById("studentName").value = "";
+        document.getElementById("studentID").value = "";
+        document.getElementById("studentPass").value = "";
+      }
+    })
+    .withFailureHandler((error) => {
+      showMessage(error.message, "error");
+    })
+    .registerStudent(name, id, pass);
 });
 
-// --- Login ---
-document.getElementById("loginBtn").addEventListener("click", async () => {
+// Login using google.script.run
+document.getElementById("loginBtn").addEventListener("click", () => {
   const name = document.getElementById("studentName").value.trim();
   const pass = document.getElementById("studentPass").value.trim();
-
-  console.log("Login attempt:", { name, pass });
 
   if (!name || !pass) {
     showMessage("Name and password required.", "error");
@@ -136,40 +91,27 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
 
   showMessage("Logging in...", "success");
 
-  try {
-    const data = await sendRequest({ 
-      action: 'loginStudent', 
-      name: name, 
-      password: pass 
-    });
-    
-    console.log("Login response:", data);
-    
-    if (data.success && data.student) {
-      localStorage.setItem("currentUser", JSON.stringify(data.student));
-      showMessage("Login successful! Redirecting...", "success");
-      setTimeout(() => {
-        window.location.href = "dashboard.html";
-      }, 1000);
-    } else {
-      showMessage(data.error || "Invalid credentials.", "error");
-    }
-  } catch (err) {
-    console.error("Login error:", err);
-    showMessage("Login error: " + err.message, "error");
-  }
+  google.script.run
+    .withSuccessHandler((result) => {
+      if (result.success) {
+        // Store user data and redirect to dashboard
+        localStorage.setItem("currentUser", JSON.stringify(result.student));
+        showMessage("Login successful! Redirecting...", "success");
+        
+        // Redirect to the dashboard (which will also be hosted in Apps Script)
+        google.script.run
+          .withSuccessHandler((html) => {
+            document.write(html);
+            document.close();
+          })
+          .getDashboard();
+      }
+    })
+    .withFailureHandler((error) => {
+      showMessage(error.message, "error");
+    })
+    .loginStudent(name, pass);
 });
-
-// Test function - you can call this from browser console
-window.testAPI = async function() {
-  console.log("Testing API connection...");
-  const response = await fetch(API_URL + "?action=test");
-  const data = await response.json();
-  console.log("API test result:", data);
-  return data;
-};
-
-console.log("Login page loaded. API URL:", API_URL);
 </script>
 
 </body>
