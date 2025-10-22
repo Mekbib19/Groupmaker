@@ -21,7 +21,7 @@ button:hover { background:#1976D2; }
   <h2>Register / Login</h2>
 
   <input type="text" id="studentName" placeholder="Name">
-  <input type="text" id="studentID" placeholder="ID (UGR/xxxx/xx)">
+  <input type="text" id="studentID" placeholder="ID (UGR/xxxxxx/xx)">
   <input type="password" id="studentPass" placeholder="Password">
 
   <button id="registerBtn">Register</button>
@@ -32,9 +32,15 @@ button:hover { background:#1976D2; }
 
 <script>
 const messageDiv = document.getElementById("message");
-const API_URL = "https://script.google.com/macros/s/AKfycbzA83Z5oVvTnJIoKlsRTiFsscnRT0nXMRXFfGOblTnWBHOCeTT07aECa4MgxXq8Ru2eTg/exec";
+const API_URL = "https://script.google.com/macros/s/YOUR_WEB_APP_ID/exec";
 
-// Registration
+// --- Helpers ---
+function showMessage(msg, type) {
+  messageDiv.textContent = msg;
+  messageDiv.className = type;
+}
+
+// --- Registration ---
 document.getElementById("registerBtn").addEventListener("click", async () => {
   const name = document.getElementById("studentName").value.trim();
   const id = document.getElementById("studentID").value.trim();
@@ -45,9 +51,9 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
     return;
   }
 
-  const idPattern = /^UGR\/\/\d{2}$/i;
+  const idPattern = /^UGR\/\d{6,8}\/\d{2}$/i;
   if (!idPattern.test(id)) {
-    showMessage("ID format must be UGR/xxxx/xx.", "error");
+    showMessage("ID format must be UGR/xxxxxx/xx.", "error");
     return;
   }
 
@@ -59,6 +65,7 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
   try {
     const res = await fetch(API_URL, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "registerStudent", name, id, password: pass })
     });
     const data = await res.json();
@@ -72,7 +79,7 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
   }
 });
 
-// Login
+// --- Login ---
 document.getElementById("loginBtn").addEventListener("click", async () => {
   const name = document.getElementById("studentName").value.trim();
   const pass = document.getElementById("studentPass").value.trim();
@@ -83,11 +90,16 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
   }
 
   try {
-    const res = await fetch(`${API_URL}?action=loginStudent&name=${encodeURIComponent(name)}&password=${encodeURIComponent(pass)}`);
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "loginStudent", name, password: pass })
+    });
     const data = await res.json();
     if (data.success && data.student) {
       localStorage.setItem("currentUser", JSON.stringify(data.student));
-      window.location.href = "dashboard.html";
+      showMessage("Login successful! Redirecting...", "success");
+      setTimeout(() => window.location.href = "dashboard.html", 1000);
     } else {
       showMessage(data.error || "Invalid credentials.", "error");
     }
@@ -95,13 +107,7 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
     showMessage("Server error. Try again.", "error");
   }
 });
-
-function showMessage(msg, type) {
-  messageDiv.textContent = msg;
-  messageDiv.className = type;
-}
 </script>
-
 
 </body>
 </html>
