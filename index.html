@@ -34,13 +34,56 @@ button:hover { background:#1976D2; }
 
 <script>
 const messageDiv = document.getElementById("message");
+const API_URL = "https://script.google.com/macros/s/AKfycbwqQRjBdW5G5j8L_NIURaXM-xOyWiYbCLhJcA1aM4QSL1erQzy98UZxLZzKepVRRtbKXg/exec";
 
-function showMessage(msg, type) {
-  messageDiv.textContent = msg;
-  messageDiv.className = type;
+// JSONP request function
+function sendJsonpRequest(payload, callback) {
+  const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+  const script = document.createElement('script');
+  
+  window[callbackName] = function(data) {
+    delete window[callbackName];
+    document.body.removeChild(script);
+    callback(data);
+  };
+  
+  const url = API_URL + '?callback=' + callbackName;
+  script.src = url;
+  
+  // For POST requests, we'll use a different approach
+  if (payload) {
+    // Store the payload and use a separate mechanism
+    window.jsonpPayload = payload;
+    script.src = url + '&payload=' + encodeURIComponent(JSON.stringify(payload));
+  }
+  
+  document.body.appendChild(script);
 }
 
-// Registration using google.script.run
+// Alternative: Use a simple GET-based approach for testing
+function sendRequest(action, data, callback) {
+  const params = new URLSearchParams();
+  params.append('action', action);
+  if (data) {
+    for (const key in data) {
+      params.append(key, data[key]);
+    }
+  }
+  
+  const script = document.createElement('script');
+  const callbackName = 'callback_' + Date.now();
+  
+  window[callbackName] = function(response) {
+    delete window[callbackName];
+    document.body.removeChild(script);
+    callback(response);
+  };
+  
+  script.src = API_URL + '?' + params.toString() + '&callback=' + callbackName;
+  document.body.appendChild(script);
+}
+
+// --- Registration ---
 document.getElementById("registerBtn").addEventListener("click", () => {
   const name = document.getElementById("studentName").value.trim();
   const id = document.getElementById("studentID").value.trim();
@@ -64,22 +107,36 @@ document.getElementById("registerBtn").addEventListener("click", () => {
 
   showMessage("Registering...", "success");
 
-  google.script.run
-    .withSuccessHandler((result) => {
-      if (result.success) {
-        showMessage("Registered successfully! You can now login.", "success");
-        document.getElementById("studentName").value = "";
-        document.getElementById("studentID").value = "";
-        document.getElementById("studentPass").value = "";
-      }
-    })
-    .withFailureHandler((error) => {
-      showMessage(error.message, "error");
-    })
-    .registerStudent(name, id, pass);
+  // Use POST via doPost
+  const script = document.createElement('script');
+  const callbackName = 'reg_callback_' + Date.now();
+  
+  window[callbackName] = function(response) {
+    delete window[callbackName];
+    document.body.removeChild(script);
+    
+    if (response.success) {
+      showMessage("Registered successfully! You can now login.", "success");
+      document.getElementById("studentName").value = "";
+      document.getElementById("studentID").value = "";
+      document.getElementById("studentPass").value = "";
+    } else {
+      showMessage(response.error || "Registration failed.", "error");
+    }
+  };
+
+  const payload = {
+    action: 'registerStudent',
+    name: name,
+    id: id,
+    password: pass
+  };
+  
+  script.src = API_URL + '?callback=' + callbackName + '&payload=' + encodeURIComponent(JSON.stringify(payload));
+  document.body.appendChild(script);
 });
 
-// Login using google.script.run
+// --- Login ---  
 document.getElementById("loginBtn").addEventListener("click", () => {
   const name = document.getElementById("studentName").value.trim();
   const pass = document.getElementById("studentPass").value.trim();
@@ -91,27 +148,57 @@ document.getElementById("loginBtn").addEventListener("click", () => {
 
   showMessage("Logging in...", "success");
 
-  google.script.run
-    .withSuccessHandler((result) => {
-      if (result.success) {
-        // Store user data and redirect to dashboard
-        localStorage.setItem("currentUser", JSON.stringify(result.student));
-        showMessage("Login successful! Redirecting...", "success");
-        
-        // Redirect to the dashboard (which will also be hosted in Apps Script)
-        google.script.run
-          .withSuccessHandler((html) => {
-            document.write(html);
-            document.close();
-          })
-          .getDashboard();
-      }
-    })
-    .withFailureHandler((error) => {
-      showMessage(error.message, "error");
-    })
-    .loginStudent(name, pass);
+  const script = document.createElement('script');
+  const callbackName = 'login_callback_' + Date.now();
+  
+  window[callbackName] = function(response) {
+    delete window[callbackName];
+    document.body.removeChild(script);
+    
+    if (response.success && response.student) {
+      localStorage.setItem("currentUser", JSON.stringify(response.student));
+      showMessage("Login successful! Redirecting...", "success");
+      setTimeout(() => {
+        window.location.href = "dashboard.html";
+      }, 1000);
+    } else {
+      showMessage(response.error || "Invalid credentials.", "error");
+    }
+  };
+
+  const payload = {
+    action: 'loginStudent',
+    name: name,
+    password: pass
+  };
+  
+  script.src = API_URL + '?callback=' + callbackName + '&payload=' + encodeURIComponent(JSON.stringify(payload));
+  document.body.appendChild(script);
 });
+
+function showMessage(msg, type) {
+  messageDiv.textContent = msg;
+  messageDiv.className = type;
+}
+
+// Test function
+window.testConnection = function() {
+  const script = document.createElement('script');
+  const callbackName = 'test_callback_' + Date.now();
+  
+  window[callbackName] = function(response) {
+    delete window[callbackName];
+    document.body.removeChild(script);
+    console.log("Test response:", response);
+    showMessage("API Connection: " + (response.success ? "Working" : "Failed"), response.success ? "success" : "error");
+  };
+  
+  script.src = API_URL + '?action=test&callback=' + callbackName;
+  document.body.appendChild(script);
+};
+
+// Test the connection when page loads
+setTimeout(testConnection, 1000);
 </script>
 
 </body>
