@@ -13,192 +13,155 @@ button { background:#2196F3; color:white; border:none; cursor:pointer; }
 button:hover { background:#1976D2; }
 .error { color:red; text-align:center; margin-top:10px; }
 .success { color:green; text-align:center; margin-top:10px; }
+.tabs { display:flex; margin-bottom:20px; }
+.tab { flex:1; padding:10px; text-align:center; cursor:pointer; border-bottom:2px solid transparent; }
+.tab.active { border-bottom-color:#2196F3; font-weight:bold; }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>Register / Login</h2>
-
-  <input type="text" id="studentName" placeholder="Name">
-  <input type="text" id="studentID" placeholder="ID (UGR/xxxxxx/xx)">
-  <input type="password" id="studentPass" placeholder="Password">
-
-  <button id="registerBtn">Register</button>
-  <button id="loginBtn">Login</button>
+  <h2>Student Portal</h2>
   
-  <div id="message"></div>
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('register')">Register</div>
+    <div class="tab" onclick="showTab('login')">Login</div>
+  </div>
+
+  <!-- Registration Form -->
+  <div id="registerTab">
+    <form id="registerForm">
+      <input type="text" id="regName" name="name" placeholder="Full Name" required>
+      <input type="text" id="regID" name="id" placeholder="ID (UGR/xxxxx/xx)" required>
+      <input type="password" id="regPass" name="password" placeholder="Password (min 4 characters)" required>
+      <button type="submit">Register</button>
+    </form>
+    <div id="registerMessage"></div>
+  </div>
+
+  <!-- Login Form -->
+  <div id="loginTab" style="display:none;">
+    <form id="loginForm">
+      <input type="text" id="loginName" name="name" placeholder="Your Name" required>
+      <input type="password" id="loginPass" name="password" placeholder="Password" required>
+      <button type="submit">Login</button>
+    </form>
+    <div id="loginMessage"></div>
+  </div>
+
+  <div style="text-align:center; margin-top:15px; font-size:14px; color:#666;">
+    Test Mode: Use any credentials
+  </div>
 </div>
 
-// Replace the entire script section with this:
-
 <script>
-const messageDiv = document.getElementById("message");
-const API_URL = "https://script.google.com/macros/s/AKfycbwqQRjBdW5G5j8L_NIURaXM-xOyWiYbCLhJcA1aM4QSL1erQzy98UZxLZzKepVRRtbKXg/exec";
-
-// JSONP request function
-function sendJsonpRequest(payload, callback) {
-  const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-  const script = document.createElement('script');
+function showTab(tabName) {
+  document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+  document.getElementById('registerTab').style.display = 'none';
+  document.getElementById('loginTab').style.display = 'none';
   
+  if (tabName === 'register') {
+    document.querySelector('.tab:nth-child(1)').classList.add('active');
+    document.getElementById('registerTab').style.display = 'block';
+  } else {
+    document.querySelector('.tab:nth-child(2)').classList.add('active');
+    document.getElementById('loginTab').style.display = 'block';
+  }
+}
+
+// Registration form handler
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const name = document.getElementById('regName').value.trim();
+  const id = document.getElementById('regID').value.trim();
+  const password = document.getElementById('regPass').value.trim();
+  
+  const messageDiv = document.getElementById('registerMessage');
+  
+  // Basic validation
+  if (!/^UGR\/\d{5}\/\d{2}$/i.test(id)) {
+    showMessage(messageDiv, 'ID must be in format UGR/xxxxx/xx', 'error');
+    return;
+  }
+  
+  if (password.length < 4) {
+    showMessage(messageDiv, 'Password must be at least 4 characters', 'error');
+    return;
+  }
+  
+  showMessage(messageDiv, 'Registering...', 'success');
+  
+  // Simulate registration (replace with actual API call later)
+  setTimeout(() => {
+    const student = { id, name, isLeader: false, groups: [] };
+    localStorage.setItem('currentUser', JSON.stringify(student));
+    showMessage(messageDiv, 'Registration successful! You can now login.', 'success');
+    document.getElementById('registerForm').reset();
+    showTab('login');
+  }, 1000);
+});
+
+// Login form handler  
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const name = document.getElementById('loginName').value.trim();
+  const password = document.getElementById('loginPass').value.trim();
+  
+  const messageDiv = document.getElementById('loginMessage');
+  
+  if (!name || !password) {
+    showMessage(messageDiv, 'Please enter both name and password', 'error');
+    return;
+  }
+  
+  showMessage(messageDiv, 'Logging in...', 'success');
+  
+  // Simulate login (replace with actual API call later)
+  setTimeout(() => {
+    // For demo purposes, create a mock student
+    const student = { 
+      id: 'UGR/' + Math.random().toString().slice(2,7) + '/23', 
+      name: name, 
+      isLeader: false, 
+      groups: [] 
+    };
+    localStorage.setItem('currentUser', JSON.stringify(student));
+    showMessage(messageDiv, 'Login successful! Redirecting...', 'success');
+    
+    setTimeout(() => {
+      window.location.href = 'dashboard.html';
+    }, 1000);
+  }, 1000);
+});
+
+function showMessage(element, message, type) {
+  element.textContent = message;
+  element.className = type;
+}
+
+// Test the API connection on load
+window.addEventListener('load', function() {
+  testAPIConnection();
+});
+
+function testAPIConnection() {
+  const script = document.createElement('script');
+  const callbackName = 'test_' + Date.now();
   window[callbackName] = function(data) {
-    delete window[callbackName];
-    document.body.removeChild(script);
-    callback(data);
-  };
-  
-  const url = API_URL + '?callback=' + callbackName;
-  script.src = url;
-  
-  // For POST requests, we'll use a different approach
-  if (payload) {
-    // Store the payload and use a separate mechanism
-    window.jsonpPayload = payload;
-    script.src = url + '&payload=' + encodeURIComponent(JSON.stringify(payload));
-  }
-  
-  document.body.appendChild(script);
-}
-
-// Alternative: Use a simple GET-based approach for testing
-function sendRequest(action, data, callback) {
-  const params = new URLSearchParams();
-  params.append('action', action);
-  if (data) {
-    for (const key in data) {
-      params.append(key, data[key]);
-    }
-  }
-  
-  const script = document.createElement('script');
-  const callbackName = 'callback_' + Date.now();
-  
-  window[callbackName] = function(response) {
-    delete window[callbackName];
-    document.body.removeChild(script);
-    callback(response);
-  };
-  
-  script.src = API_URL + '?' + params.toString() + '&callback=' + callbackName;
-  document.body.appendChild(script);
-}
-
-// --- Registration ---
-document.getElementById("registerBtn").addEventListener("click", () => {
-  const name = document.getElementById("studentName").value.trim();
-  const id = document.getElementById("studentID").value.trim();
-  const pass = document.getElementById("studentPass").value.trim();
-
-  if (!name || !id || !pass) {
-    showMessage("All fields are required.", "error");
-    return;
-  }
-
-  const idPattern = /^UGR\/\d{5}\/\d{2}$/i;
-  if (!idPattern.test(id)) {
-    showMessage("ID format must be UGR/xxxxx/xx.", "error");
-    return;
-  }
-
-  if (pass.length < 4) {
-    showMessage("Password must be at least 4 characters.", "error");
-    return;
-  }
-
-  showMessage("Registering...", "success");
-
-  // Use POST via doPost
-  const script = document.createElement('script');
-  const callbackName = 'reg_callback_' + Date.now();
-  
-  window[callbackName] = function(response) {
+    console.log('API Connection Test:', data);
     delete window[callbackName];
     document.body.removeChild(script);
     
-    if (response.success) {
-      showMessage("Registered successfully! You can now login.", "success");
-      document.getElementById("studentName").value = "";
-      document.getElementById("studentID").value = "";
-      document.getElementById("studentPass").value = "";
+    if (data && data.success) {
+      console.log('✅ API is working correctly');
     } else {
-      showMessage(response.error || "Registration failed.", "error");
+      console.log('❌ API connection failed');
     }
   };
-
-  const payload = {
-    action: 'registerStudent',
-    name: name,
-    id: id,
-    password: pass
-  };
   
-  script.src = API_URL + '?callback=' + callbackName + '&payload=' + encodeURIComponent(JSON.stringify(payload));
+  script.src = 'https://script.google.com/macros/s/AKfycbwqQRjBdW5G5j8L_NIURaXM-xOyWiYbCLhJcA1aM4QSL1erQzy98UZxLZzKepVRRtbKXg/exec?action=test&callback=' + callbackName;
   document.body.appendChild(script);
-});
-
-// --- Login ---  
-document.getElementById("loginBtn").addEventListener("click", () => {
-  const name = document.getElementById("studentName").value.trim();
-  const pass = document.getElementById("studentPass").value.trim();
-
-  if (!name || !pass) {
-    showMessage("Name and password required.", "error");
-    return;
-  }
-
-  showMessage("Logging in...", "success");
-
-  const script = document.createElement('script');
-  const callbackName = 'login_callback_' + Date.now();
-  
-  window[callbackName] = function(response) {
-    delete window[callbackName];
-    document.body.removeChild(script);
-    
-    if (response.success && response.student) {
-      localStorage.setItem("currentUser", JSON.stringify(response.student));
-      showMessage("Login successful! Redirecting...", "success");
-      setTimeout(() => {
-        window.location.href = "dashboard.html";
-      }, 1000);
-    } else {
-      showMessage(response.error || "Invalid credentials.", "error");
-    }
-  };
-
-  const payload = {
-    action: 'loginStudent',
-    name: name,
-    password: pass
-  };
-  
-  script.src = API_URL + '?callback=' + callbackName + '&payload=' + encodeURIComponent(JSON.stringify(payload));
-  document.body.appendChild(script);
-});
-
-function showMessage(msg, type) {
-  messageDiv.textContent = msg;
-  messageDiv.className = type;
 }
-
-// Test function
-window.testConnection = function() {
-  const script = document.createElement('script');
-  const callbackName = 'test_callback_' + Date.now();
-  
-  window[callbackName] = function(response) {
-    delete window[callbackName];
-    document.body.removeChild(script);
-    console.log("Test response:", response);
-    showMessage("API Connection: " + (response.success ? "Working" : "Failed"), response.success ? "success" : "error");
-  };
-  
-  script.src = API_URL + '?action=test&callback=' + callbackName;
-  document.body.appendChild(script);
-};
-
-// Test the connection when page loads
-setTimeout(testConnection, 1000);
 </script>
 
 </body>
