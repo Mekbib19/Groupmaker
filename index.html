@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Registration/Login</title>
+<style>
+body { font-family: Arial,sans-serif; background:#f5f5f5; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
+.container { background:white; padding:30px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); width:350px; }
+h2 { text-align:center; margin-bottom:20px; }
+input, button { width:100%; padding:10px; margin-bottom:15px; font-size:16px; border-radius:5px; border:1px solid #ddd; }
+button { background:#2196F3; color:white; border:none; cursor:pointer; }
+button:hover { background:#1976D2; }
+.error { color:red; text-align:center; margin-top:10px; }
+.success { color:green; text-align:center; margin-top:10px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Register / Login</h2>
+
+  <input type="text" id="studentName" placeholder="Name">
+  <input type="text" id="studentID" placeholder="ID (UGR/xxxx/xx)">
+  <input type="password" id="studentPass" placeholder="Password">
+
+  <button id="registerBtn">Register</button>
+  <button id="loginBtn">Login</button>
+  
+  <div id="message"></div>
+</div>
+
+<script>
+const messageDiv = document.getElementById("message");
+const API_URL = "https://script.google.com/macros/s/AKfycbx-8NwGYTLi-H63xFcY3xKOWRxfdGOrynzbvzZ9tmoGNbtbTv9BdTR2PQ4uc8SXF5X2Dw/exec";
+
+// Registration
+document.getElementById("registerBtn").addEventListener("click", async () => {
+  const name = document.getElementById("studentName").value.trim();
+  const id = document.getElementById("studentID").value.trim();
+  const pass = document.getElementById("studentPass").value.trim();
+
+  if (!name || !id || !pass) {
+    showMessage("All fields are required.", "error");
+    return;
+  }
+
+  const idPattern = /^UGR\/\d{5}\/\d{2}$/i;
+  if (!idPattern.test(id)) {
+    showMessage("ID format must be UGR/xxxx/xx.", "error");
+    return;
+  }
+
+  if (pass.length < 4) {
+    showMessage("Password must be at least 4 characters.", "error");
+    return;
+  }
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "registerStudent", name, id, password: pass })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showMessage("Registered successfully!", "success");
+    } else {
+      showMessage(data.error || "Registration failed.", "error");
+    }
+  } catch (err) {
+    showMessage("Server error. Try again.", "error");
+  }
+});
+
+// Login
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const name = document.getElementById("studentName").value.trim();
+  const pass = document.getElementById("studentPass").value.trim();
+
+  if (!name || !pass) {
+    showMessage("Name and password required.", "error");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_URL}?action=loginStudent&name=${encodeURIComponent(name)}&password=${encodeURIComponent(pass)}`);
+    const data = await res.json();
+    if (data.success && data.student) {
+      localStorage.setItem("currentUser", JSON.stringify(data.student));
+      window.location.href = "dashboard.html";
+    } else {
+      showMessage(data.error || "Invalid credentials.", "error");
+    }
+  } catch (err) {
+    showMessage("Server error. Try again.", "error");
+  }
+});
+
+function showMessage(msg, type) {
+  messageDiv.textContent = msg;
+  messageDiv.className = type;
+}
+</script>
+
+
+</body>
+</html>
