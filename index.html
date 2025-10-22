@@ -45,7 +45,7 @@ document.getElementById("registerBtn").addEventListener("click", async () => {
     return;
   }
 
-  const idPattern = /^UGR\/\d{5}\/\d{2}$/i;
+  const idPattern = /^UGR\/\d{4,8}\/\d{2}$/i;
   if (!idPattern.test(id)) {
     showMessage("ID format must be UGR/xxxx/xx.", "error");
     return;
